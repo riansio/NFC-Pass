@@ -1,0 +1,47 @@
+name: Build APK dan Simpan ke Branch Release
+on: [push, workflow_dispatch]
+
+permissions:
+  contents: write # Memberikan izin ke robot GitHub untuk menulis/membuat branch baru
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ambil Kode dari Repositori
+        uses: actions/checkout@v4
+
+      - name: Ekstrak File ZIP Proyek
+        run: |
+          unzip *.zip -d proyek_kamu
+          cd proyek_kamu
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Merakit APK
+        run: |
+          cd proyek_kamu
+          flutter pub get
+          flutter build apk --debug
+
+      - name: Siapkan Folder Pengiriman APK
+        run: |
+          mkdir -p output-apk
+          cp proyek_kamu/build/app/outputs/flutter-apk/app-debug.apk output-apk/Aplikasi-AI-Samsung-A50.apk
+
+      - name: Push APK ke Branch apk-release
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./output-apk
+          publish_branch: apk-release # Nama branch tujuan pengiriman APK
+          force_orphan: true # Membuat branch bersih yang hanya berisi file APK saja
