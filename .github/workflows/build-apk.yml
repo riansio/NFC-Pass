@@ -4,6 +4,10 @@ on: [push, workflow_dispatch]
 permissions:
   contents: write
 
+env:
+  # Memaksa GitHub mengizinkan eksekusi tanpa memblokir langkah akibat Node.js 20
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,18 +26,23 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Flutter (Versi Stabil Terbaru)
+      - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          cache: true # Mengaktifkan cache agar menghemat memori server
+          cache: true
 
-      - name: Merakit APK (Mode Hemat Memori)
+      - name: Bersihkan Cache Flutter Terlebih Dahulu
         run: |
           cd proyek_kamu
+          flutter clean
           flutter pub get
-          # Ditambahkan perintah --no-pub dan --build-number untuk mencegah exit code 9
-          flutter build apk --debug --no-pub
+
+      - name: Merakit APK (Mode Sangat Ringan)
+        run: |
+          cd proyek_kamu
+          # Menambahkan parameter khusus untuk menekan penggunaan memori berlebih
+          flutter build apk --debug --no-pub --no-shrink
 
       - name: Siapkan Folder Pengiriman APK
         run: |
