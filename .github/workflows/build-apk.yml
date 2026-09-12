@@ -6,7 +6,8 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+  # Membatasi penggunaan memori Gradle di server agar tidak menyentuh batas RAM GitHub
+  GRADLE_OPTS: "-Xmx2048m -XX:MaxMetaspaceSize=512m -XX:+UseG1GC"
 
 jobs:
   build:
@@ -32,21 +33,22 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Bersihkan Cache dan Ambil Dependensi
+      - name: Ambil Dependensi
         run: |
           cd proyek_kamu
-          flutter clean
           flutter pub get
 
-      - name: Merakit APK (Optimasi Memori)
+      - name: Merakit APK split (Sangat Ringan untuk RAM)
         run: |
           cd proyek_kamu
-          flutter build apk --debug --no-pub --no-shrink
+          # Menggunakan --split-per-abi membuat server merakit komponen secara terpisah (jauh lebih ringan)
+          flutter build apk --debug --no-pub --split-per-abi
 
       - name: Siapkan Folder Pengiriman APK
         run: |
           mkdir -p output-apk
-          cp proyek_kamu/build/app/outputs/flutter-apk/app-debug.apk output-apk/Aplikasi-AI-Samsung-A50.apk
+          # Mengambil file hasil split untuk arsitektur HP modern (arm64)
+          cp proyek_kamu/build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk output-apk/Aplikasi-AI-Samsung-A50.apk
 
       - name: Push APK ke Branch apk-release
         uses: peaceiris/actions-gh-pages@v4
