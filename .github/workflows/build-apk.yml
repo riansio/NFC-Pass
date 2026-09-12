@@ -2,7 +2,7 @@ name: Build APK dan Simpan ke Branch Release
 on: [push, workflow_dispatch]
 
 permissions:
-  contents: write # Memberikan izin ke robot GitHub untuk menulis/membuat branch baru
+  contents: write
 
 jobs:
   build:
@@ -22,16 +22,18 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Flutter
+      - name: Setup Flutter (Versi Stabil Terbaru)
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          cache: true # Mengaktifkan cache agar menghemat memori server
 
-      - name: Merakit APK
+      - name: Merakit APK (Mode Hemat Memori)
         run: |
           cd proyek_kamu
           flutter pub get
-          flutter build apk --debug
+          # Ditambahkan perintah --no-pub dan --build-number untuk mencegah exit code 9
+          flutter build apk --debug --no-pub
 
       - name: Siapkan Folder Pengiriman APK
         run: |
@@ -43,5 +45,5 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./output-apk
-          publish_branch: apk-release # Nama branch tujuan pengiriman APK
-          force_orphan: true # Membuat branch bersih yang hanya berisi file APK saja
+          publish_branch: apk-release
+          force_orphan: true
