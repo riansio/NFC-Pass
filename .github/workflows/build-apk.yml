@@ -5,7 +5,6 @@ permissions:
   contents: write
 
 env:
-  # Memaksa GitHub Actions menggunakan Node.js 24 penuh agar terbebas dari peringatan lama
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
@@ -42,28 +41,6 @@ jobs:
       - name: Merakit APK (Optimasi Memori)
         run: |
           cd proyek_kamu
-          flutter build apk --debug --no-pub --no-shrink
-
-      - name: Siapkan Folder Pengiriman APK
-        run: |
-          mkdir -p output-apk
-          cp proyek_kamu/build/app/outputs/flutter-apk/app-debug.apk output-apk/Aplikasi-AI-Samsung-A50.apk
-
-      - name: Push APK ke Branch apk-release
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./output-apk
-          publish_branch: apk-release
-          force_orphan: true
-          cd proyek_kamu
-          flutter clean
-          flutter pub get
-
-      - name: Merakit APK (Mode Sangat Ringan)
-        run: |
-          cd proyek_kamu
-          # Menambahkan parameter khusus untuk menekan penggunaan memori berlebih
           flutter build apk --debug --no-pub --no-shrink
 
       - name: Siapkan Folder Pengiriman APK
