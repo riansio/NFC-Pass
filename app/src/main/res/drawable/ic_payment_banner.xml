@@ -1,0 +1,68 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="260dp"
+    android:height="96dp"
+    android:viewportWidth="260"
+    android:viewportHeight="96">
+    <!-- Dark Background -->
+    <path
+        android:fillColor="#0B1320"
+        android:pathData="M0,0h260v96h-260z" />
+    
+    <!-- Subtle Gradient Accent Bar at bottom -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M0,92h260v4h-260z" />
+
+    <!-- Card Icon Silhouette -->
+    <path
+        android:fillColor="#15273C"
+        android:pathData="M24,22h44c5.5,0 10,4.5 10,10v32c0,5.5 -4.5,10 -10,10H24c-5.5,0 -10,-4.5 -10,-10V32c0,-5.5 4.5,-10 10,-10z" />
+
+    <!-- Card Chip / Emblem -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M26,38h14c2.2,0 4,1.8 4,4v12c0,2.2 -1.8,4 -4,4H26c-2.2,0 -4,-1.8 -4,-4V42c0,-2.2 1.8,-4 4,-4z" />
+
+    <!-- Contactless Radio Wave 1 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#00E5FF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M52,42c3.5,3.8 3.5,10.2 0,14" />
+
+    <!-- Contactless Radio Wave 2 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#38BDF8"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M58,37c6.2,6.5 6.2,17.5 0,24" />
+
+    <!-- Contactless Radio Wave 3 -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#818CF8"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M64,32c9,9.3 9,25.7 0,35" />
+
+    <!-- Title Label Elements (Shapes representing NFC PASS) -->
+    <!-- N -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M92,36h4.5l11,18V36h4v24h-4.5l-11,-18v18h-4z" />
+    <!-- F -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M117,36h15v4h-11v6h9v4h-9v10h-4z" />
+    <!-- C -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M149,36c6.6,0 11,4.5 11,12v2c0,7.5 -4.4,12 -11,12c-6.6,0 -11,-4.5 -11,-12v-2c0,-7.5 4.4,-12 11,-12z M149,40c-4.2,0 -6.8,3.2 -6.8,8v2c0,4.8 2.6,8 6.8,8c4.2,0 6.8,-3.2 6.8,-8v-2c0,-4.8 -2.6,-8 -6.8,-8z" />
+
+    <!-- Subtitle: CONTACTLESS PAYMENTS & ACCESS -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M92,68h70v2h-70z" />
+</vector>

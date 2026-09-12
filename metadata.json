@@ -1,0 +1,7 @@
+{
+  "name": "NFC Pass",
+  "description": "Add NFC tags as virtual access cards with Host Card Emulation and duplicate or clone them to blank tags.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

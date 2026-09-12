@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<host-apdu-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/hce_service_desc"
+    android:requireDeviceUnlock="false"
+    android:apduServiceBanner="@drawable/ic_payment_banner"
+    android:settingsActivity="com.example.MainActivity">
+
+    <!-- Payment Category: Registers with Android Contactless Payments Settings -->
+    <aid-group
+        android:category="payment"
+        android:description="@string/hce_payment_aid_desc">
+        <!-- Contactless Payment Environment (PPSE: 2PAY.SYS.DDF01) -->
+        <aid-filter android:name="325041592E5359532E4444463031" />
+        <!-- Visa -->
+        <aid-filter android:name="A0000000031010" />
+        <!-- Mastercard -->
+        <aid-filter android:name="A0000000041010" />
+        <!-- American Express -->
+        <aid-filter android:name="A00000002501" />
+        <!-- JCB -->
+        <aid-filter android:name="A0000000651010" />
+        <!-- Discover -->
+        <aid-filter android:name="A0000001523010" />
+        <!-- UnionPay -->
+        <aid-filter android:name="A000000333010101" />
+    </aid-group>
+
+    <!-- Other Category: Access Badges, Keys, Smart Cards, Transit, and NDEF -->
+    <aid-group
+        android:category="other"
+        android:description="@string/hce_aid_group_desc">
+        <!-- NFC Forum Type 4 NDEF Application (v2.0 & v1.0) -->
+        <aid-filter android:name="D2760000850101" />
+        <aid-filter android:name="D2760000850100" />
+        <!-- Physical Access Control Systems (PACS) -->
+        <aid-filter android:name="F0010203040506" />
+        <aid-filter android:name="F000000001" />
+        <aid-filter android:name="F222222222" />
+        <aid-filter android:name="A000000116" />
+        <aid-filter android:name="F048494420" />
+        <!-- PIV Government & Corporate ID -->
+        <aid-filter android:name="A00000047601" />
+        <!-- MIFARE DESFire Root Application Envelope -->
+        <aid-filter android:name="D2760001180002" />
+        <!-- Calypso Transit (Paris Navigo, Israel Rav-Kav, etc.) -->
+        <aid-filter android:name="A0000002471001" />
+        <!-- Sony FeliCa / Suica Transit Envelope -->
+        <aid-filter android:name="D4100000030001" />
+        <!-- University Campus & Student ID (CBORD / Blackboard) -->
+        <aid-filter android:name="A0000000043060" />
+        <aid-filter android:name="F0394148148100" />
+        <!-- Smart Hotel Keycard (Assa Abloy / VingCard / Salto) -->
+        <aid-filter android:name="F000000002" />
+        <!-- Generic Smart Card Envelope -->
+        <aid-filter android:name="E104000000" />
+    </aid-group>
+</host-apdu-service>
