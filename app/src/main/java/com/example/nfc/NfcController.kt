@@ -267,7 +267,7 @@ class NfcController(private val context: Context) : NfcAdapter.ReaderCallback {
                 triggerHapticFeedback()
                 _writeStatus.value = WriteStatus.Success(
                     tagUid = tagUid,
-                    message = "Successfully cloned card \"${card.name}\" to tag $tagUid (${ndefMessage.byteArrayLength} bytes written)."
+                    message = "Successfully cloned original hardware UID (${card.effectiveOriginalUidHex}) to tag $tagUid (${ndefMessage.byteArrayLength} bytes written). Category, Facility, Facility Code, Card number, and name excluded."
                 )
             } else {
                 val formatable = NdefFormatable.get(tag)
@@ -278,7 +278,7 @@ class NfcController(private val context: Context) : NfcAdapter.ReaderCallback {
                     triggerHapticFeedback()
                     _writeStatus.value = WriteStatus.Success(
                         tagUid = tagUid,
-                        message = "Formatted and cloned card \"${card.name}\" to tag $tagUid!"
+                        message = "Formatted and cloned original card data to tag $tagUid!"
                     )
                 } else {
                     _writeStatus.value = WriteStatus.Error(
@@ -291,28 +291,75 @@ class NfcController(private val context: Context) : NfcAdapter.ReaderCallback {
         }
     }
 
+    fun getOriginalCloneDataSummary(card: NfcCard): String {
+        val origPayload = card.effectiveOriginalPayload
+        val origUid = card.effectiveOriginalUidHex
+        val origMimeOrUri = card.effectiveOriginalMimeOrUri
+
+        return when {
+            origMimeOrUri.startsWith("http://", ignoreCase = true) || origMimeOrUri.startsWith("https://", ignoreCase = true) ->
+                origMimeOrUri
+            origPayload.startsWith("http://", ignoreCase = true) || origPayload.startsWith("https://", ignoreCase = true) ->
+                origPayload
+            origPayload.isNotBlank() && !origPayload.startsWith("NFC-PASS:", ignoreCase = true) ->
+                origPayload
+            else -> "UID=$origUid"
+        }
+    }
+
     private fun buildNdefMessageForCard(card: NfcCard): NdefMessage {
         val records = mutableListOf<NdefRecord>()
 
-        // Record 1: Text record with access badge credentials
-        val accessData = "NFC-PASS:UID=${card.uidHex}|NAME=${card.name}|CAT=${card.category}|DESC=${card.description}|FACILITY=${card.facilityCode}|CARD=${card.cardNumber}|PAYLOAD=${card.ndefPayload}"
-        val textRecord = NdefRecord.createTextRecord("en", accessData)
-        records.add(textRecord)
+        // Strictly clone ONLY original hardware contents (UID & raw payload):
+        val origPayload = card.effectiveOriginalPayload
+        val origUid = card.effectiveOriginalUidHex
+        val origMimeOrUri = card.effectiveOriginalMimeOrUri
 
-        // Record 2: Optional URI record if card has URI payload
-        if (card.ndefMimeOrUri.startsWith("http://", ignoreCase = true) ||
-            card.ndefMimeOrUri.startsWith("https://", ignoreCase = true)) {
+        // If the original card was a URI (e.g. web link or custom URI schema)
+        if (origMimeOrUri.startsWith("http://", ignoreCase = true) ||
+            origMimeOrUri.startsWith("https://", ignoreCase = true) ||
+            origPayload.startsWith("http://", ignoreCase = true) ||
+            origPayload.startsWith("https://", ignoreCase = true)) {
+            val uri = if (origPayload.startsWith("http://", ignoreCase = true) ||
+                origPayload.startsWith("https://", ignoreCase = true)) origPayload else origMimeOrUri
             try {
-                records.add(NdefRecord.createUri(card.ndefMimeOrUri))
+                records.add(NdefRecord.createUri(uri))
             } catch (_: Exception) {}
+        } else if (origPayload.isNotBlank() && !origPayload.startsWith("NFC-PASS:", ignoreCase = true)) {
+            // Original card held raw, unmodified text or custom payload: clone it directly
+            records.add(NdefRecord.createTextRecord("en", origPayload))
+        } else {
+            // For access cards: only pure hardware UID.
+            // Category, Facility, Facility Code, Card number, and duplicated card names are completely removed.
+            val originalAccessData = if (origPayload.startsWith("NFC-PASS:", ignoreCase = true)) {
+                val parts = origPayload.removePrefix("NFC-PASS:").split("|")
+                val cleanParts = parts.filter { part ->
+                    !part.startsWith("NAME=", ignoreCase = true) &&
+                    !part.startsWith("CAT=", ignoreCase = true) &&
+                    !part.startsWith("DESC=", ignoreCase = true) &&
+                    !part.startsWith("NOTES=", ignoreCase = true) &&
+                    !part.startsWith("FAC=", ignoreCase = true) &&
+                    !part.startsWith("FACILITY=", ignoreCase = true) &&
+                    !part.startsWith("NUM=", ignoreCase = true) &&
+                    !part.startsWith("CARD=", ignoreCase = true)
+                }
+                "NFC-PASS:" + cleanParts.joinToString("|")
+            } else {
+                buildString {
+                    append("NFC-PASS:UID=").append(origUid)
+                    if (origPayload.isNotBlank() && !origPayload.startsWith("NFC-PASS:", ignoreCase = true)) {
+                        append("|PAYLOAD=").append(origPayload)
+                    }
+                }
+            }
+            records.add(NdefRecord.createTextRecord("en", originalAccessData))
+            records.add(
+                NdefRecord.createMime(
+                    "application/vnd.nfcpass.card",
+                    originalAccessData.toByteArray(StandardCharsets.UTF_8)
+                )
+            )
         }
-
-        // Record 3: Custom MIME record for direct app identification
-        val mimeRecord = NdefRecord.createMime(
-            "application/vnd.nfcpass.card",
-            accessData.toByteArray(StandardCharsets.UTF_8)
-        )
-        records.add(mimeRecord)
 
         return NdefMessage(records.toTypedArray())
     }
@@ -540,7 +587,7 @@ class NfcController(private val context: Context) : NfcAdapter.ReaderCallback {
         triggerHapticFeedback()
         _writeStatus.value = WriteStatus.Success(
             tagUid = simulatedBlankUid,
-            message = "Cloned \"${card.name}\" to NTAG215 Blank Tag (UID: $simulatedBlankUid). Verified 124 bytes written!"
+            message = "Cloned original hardware UID (${card.effectiveOriginalUidHex}) to NTAG215 Blank Tag (UID: $simulatedBlankUid). Category, Facility, Facility Code, Card number, and name excluded."
         )
     }
 }

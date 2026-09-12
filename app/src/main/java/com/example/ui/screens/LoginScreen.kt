@@ -43,6 +43,17 @@ import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.SyncAlt
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.ui.NfcViewModel
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -95,11 +106,46 @@ import java.util.Locale
 
 @Composable
 fun LoginScreen(
+    viewModel: NfcViewModel,
+    onDismiss: () -> Unit = {},
+    requireSignIn: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+    val authState by viewModel.authUiState.collectAsStateWithLifecycle()
+    val syncState by viewModel.cloudSyncState.collectAsStateWithLifecycle()
+    val allCards by viewModel.allCards.collectAsStateWithLifecycle()
+
+    LoginScreen(
+        currentUser = currentUser,
+        authState = authState,
+        syncState = syncState,
+        cardCount = allCards.size,
+        onSignInWithGoogle = { activity -> viewModel.signInWithGoogle(activity) },
+        onSignInWithEmail = { email, password -> viewModel.signInWithEmail(email, password) },
+        onSignUpWithEmail = { email, password, name -> viewModel.signUpWithEmail(email, password, name) },
+        onPasswordReset = { email -> viewModel.sendPasswordReset(email) },
+        onSignOut = { viewModel.signOut() },
+        onSyncCards = { viewModel.syncCardsToAccount() },
+        onRestoreCards = { viewModel.restoreCardsFromAccount() },
+        onUpdateFullName = { newName -> viewModel.updateFullName(newName) },
+        onRefreshProfile = { viewModel.refreshUserProfile() },
+        onDismiss = onDismiss,
+        requireSignIn = requireSignIn,
+        modifier = modifier
+    )
+}
+
+@Composable
+fun LoginScreen(
     currentUser: AuthUser?,
     authState: AuthUiState,
     syncState: CloudSyncState,
     cardCount: Int,
     onSignInWithGoogle: (activity: Activity) -> Unit,
+    onSignInWithEmail: (email: String, password: String) -> Unit = { _, _ -> },
+    onSignUpWithEmail: (email: String, password: String, displayName: String) -> Unit = { _, _, _ -> },
+    onPasswordReset: (email: String) -> Unit = {},
     onSignOut: () -> Unit,
     onSyncCards: () -> Unit,
     onRestoreCards: () -> Unit,
@@ -264,9 +310,12 @@ fun LoginScreen(
                     SignInSection(
                         authState = authState,
                         requireSignIn = requireSignIn,
-                        onSignInClick = {
+                        onSignInGoogleClick = {
                             activity?.let { onSignInWithGoogle(it) }
                         },
+                        onSignInEmailClick = onSignInWithEmail,
+                        onSignUpEmailClick = onSignUpWithEmail,
+                        onPasswordResetClick = onPasswordReset,
                         onContinueOffline = onDismiss,
                         onOpenLanguageSelector = { showLanguageDialog = true }
                     )
@@ -362,10 +411,23 @@ fun LoginScreen(
 private fun SignInSection(
     authState: AuthUiState,
     requireSignIn: Boolean,
-    onSignInClick: () -> Unit,
+    onSignInGoogleClick: () -> Unit,
+    onSignInEmailClick: (String, String) -> Unit,
+    onSignUpEmailClick: (String, String, String) -> Unit,
+    onPasswordResetClick: (String) -> Unit,
     onContinueOffline: () -> Unit,
     onOpenLanguageSelector: () -> Unit
 ) {
+    var selectedAuthMethod by remember { mutableStateOf(0) } // 0 = Google, 1 = Email & Password
+    var isSignUpMode by remember { mutableStateOf(false) }
+    var emailInput by remember { mutableStateOf("") }
+    var passwordInput by remember { mutableStateOf("") }
+    var displayNameInput by remember { mutableStateOf("") }
+    var isPasswordVisible by remember { mutableStateOf(false) }
+    var localValidationError by remember { mutableStateOf<String?>(null) }
+    var showForgotPasswordDialog by remember { mutableStateOf(false) }
+    var forgotPasswordEmail by remember { mutableStateOf("") }
+
     Card(
         colors = CardDefaults.cardColors(containerColor = DarkSurfaceCard),
         shape = RoundedCornerShape(18.dp),
@@ -376,8 +438,84 @@ private fun SignInSection(
             modifier = Modifier.padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Error Message Banner if any
-            if (authState is AuthUiState.Error) {
+            // Auth Tab Switcher (Google vs Email & Password)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF0F172A))
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Tab 1: Google
+                Surface(
+                    onClick = {
+                        selectedAuthMethod = 0
+                        localValidationError = null
+                    },
+                    shape = RoundedCornerShape(9.dp),
+                    color = if (selectedAuthMethod == 0) CyanPrimary.copy(alpha = 0.2f) else Color.Transparent,
+                    border = if (selectedAuthMethod == 0) BorderStroke(1.dp, CyanPrimary) else null,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(vertical = 10.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = painterResource(R.drawable.img_google_logo_1789115356116),
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.tab_google_auth),
+                            fontSize = 12.sp,
+                            fontWeight = if (selectedAuthMethod == 0) FontWeight.Bold else FontWeight.Medium,
+                            color = if (selectedAuthMethod == 0) Color.White else Color(0xFF94A3B8)
+                        )
+                    }
+                }
+
+                // Tab 2: Email & Password
+                Surface(
+                    onClick = {
+                        selectedAuthMethod = 1
+                        localValidationError = null
+                    },
+                    shape = RoundedCornerShape(9.dp),
+                    color = if (selectedAuthMethod == 1) CyanPrimary.copy(alpha = 0.2f) else Color.Transparent,
+                    border = if (selectedAuthMethod == 1) BorderStroke(1.dp, CyanPrimary) else null,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(vertical = 10.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Email,
+                            contentDescription = null,
+                            tint = if (selectedAuthMethod == 1) CyanPrimary else Color(0xFF94A3B8),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.tab_email_auth),
+                            fontSize = 12.sp,
+                            fontWeight = if (selectedAuthMethod == 1) FontWeight.Bold else FontWeight.Medium,
+                            color = if (selectedAuthMethod == 1) Color.White else Color(0xFF94A3B8)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Error Message Banner if any (Firebase error or local validation)
+            val errorMessage = (authState as? AuthUiState.Error)?.message ?: localValidationError
+            if (!errorMessage.isNullOrBlank()) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color(0xFF450A0A)),
                     shape = RoundedCornerShape(10.dp),
@@ -387,7 +525,7 @@ private fun SignInSection(
                         .padding(bottom = 16.dp)
                 ) {
                     Text(
-                        text = authState.message,
+                        text = errorMessage,
                         color = Color(0xFFFCA5A5),
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(12.dp)
@@ -395,18 +533,206 @@ private fun SignInSection(
                 }
             }
 
-            // Google Sign-In Button
-            GoogleSignInButton(
-                isLoading = authState is AuthUiState.Loading,
-                onClick = onSignInClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp)
-                    .testTag("sign_in_with_google_button")
-            )
+            if (selectedAuthMethod == 0) {
+                // Google Sign-In Button
+                GoogleSignInButton(
+                    isLoading = authState is AuthUiState.Loading,
+                    onClick = onSignInGoogleClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp)
+                        .testTag("sign_in_with_google_button")
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "One-tap authentication with Google Credential Manager & Firebase sync",
+                    fontSize = 11.sp,
+                    color = Color(0xFF64748B),
+                    textAlign = TextAlign.Center
+                )
+            } else {
+                // Firebase Email & Password Form
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    if (isSignUpMode) {
+                        OutlinedTextField(
+                            value = displayNameInput,
+                            onValueChange = {
+                                displayNameInput = it
+                                localValidationError = null
+                            },
+                            label = { Text(stringResource(R.string.display_name_label)) },
+                            placeholder = { Text(stringResource(R.string.display_name_hint), color = Color(0xFF64748B)) },
+                            leadingIcon = {
+                                Icon(Icons.Default.Person, contentDescription = null, tint = CyanPrimary)
+                            },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = CyanPrimary,
+                                unfocusedBorderColor = Color(0xFF334155),
+                                focusedLabelColor = CyanPrimary,
+                                cursorColor = CyanPrimary,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("auth_display_name_input")
+                        )
+                    }
+
+                    OutlinedTextField(
+                        value = emailInput,
+                        onValueChange = {
+                            emailInput = it
+                            localValidationError = null
+                        },
+                        label = { Text(stringResource(R.string.email_address_label)) },
+                        placeholder = { Text(stringResource(R.string.email_address_hint), color = Color(0xFF64748B)) },
+                        leadingIcon = {
+                            Icon(Icons.Default.Email, contentDescription = null, tint = CyanPrimary)
+                        },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = CyanPrimary,
+                            unfocusedBorderColor = Color(0xFF334155),
+                            focusedLabelColor = CyanPrimary,
+                            cursorColor = CyanPrimary,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("auth_email_input")
+                    )
+
+                    OutlinedTextField(
+                        value = passwordInput,
+                        onValueChange = {
+                            passwordInput = it
+                            localValidationError = null
+                        },
+                        label = { Text(stringResource(R.string.password_label)) },
+                        placeholder = { Text(stringResource(R.string.password_hint), color = Color(0xFF64748B)) },
+                        leadingIcon = {
+                            Icon(Icons.Default.Lock, contentDescription = null, tint = CyanPrimary)
+                        },
+                        trailingIcon = {
+                            IconButton(onClick = { isPasswordVisible = !isPasswordVisible }) {
+                                Icon(
+                                    imageVector = if (isPasswordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = "Toggle password visibility",
+                                    tint = Color(0xFF94A3B8)
+                                )
+                            }
+                        },
+                        visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = CyanPrimary,
+                            unfocusedBorderColor = Color(0xFF334155),
+                            focusedLabelColor = CyanPrimary,
+                            cursorColor = CyanPrimary,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("auth_password_input")
+                    )
+
+                    if (!isSignUpMode) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            TextButton(
+                                onClick = {
+                                    forgotPasswordEmail = emailInput
+                                    showForgotPasswordDialog = true
+                                },
+                                contentPadding = PaddingValues(0.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.forgot_password_btn),
+                                    color = CyanPrimary,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+
+                    Button(
+                        onClick = {
+                            val cleanEmail = emailInput.trim()
+                            if (cleanEmail.isBlank() || !cleanEmail.contains("@")) {
+                                localValidationError = "Please enter a valid email address."
+                                return@Button
+                            }
+                            if (passwordInput.length < 6) {
+                                localValidationError = "Password must be at least 6 characters long."
+                                return@Button
+                            }
+                            if (isSignUpMode) {
+                                onSignUpEmailClick(cleanEmail, passwordInput, displayNameInput.trim())
+                            } else {
+                                onSignInEmailClick(cleanEmail, passwordInput)
+                            }
+                        },
+                        enabled = authState !is AuthUiState.Loading,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = CyanPrimary,
+                            contentColor = DarkBackground
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("email_auth_submit_button")
+                    ) {
+                        if (authState is AuthUiState.Loading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = DarkBackground,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Authenticating with Firebase...",
+                                fontWeight = FontWeight.Bold
+                            )
+                        } else {
+                            Text(
+                                text = if (isSignUpMode) stringResource(R.string.btn_create_account) else stringResource(R.string.btn_sign_in),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+
+                    TextButton(
+                        onClick = {
+                            isSignUpMode = !isSignUpMode
+                            localValidationError = null
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = if (isSignUpMode) stringResource(R.string.toggle_sign_in) else stringResource(R.string.toggle_create_account),
+                            color = Color(0xFF94A3B8),
+                            fontSize = 12.5.sp
+                        )
+                    }
+                }
+            }
 
             if (!requireSignIn) {
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 // Continue Offline Secondary Option
                 OutlinedButton(
@@ -434,6 +760,63 @@ private fun SignInSection(
                 onOpenFullDialog = onOpenLanguageSelector
             )
         }
+    }
+
+    if (showForgotPasswordDialog) {
+        AlertDialog(
+            onDismissRequest = { showForgotPasswordDialog = false },
+            title = {
+                Text(
+                    text = stringResource(R.string.reset_password_dialog_title),
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = stringResource(R.string.reset_password_dialog_desc),
+                        fontSize = 13.sp,
+                        color = Color(0xFF94A3B8)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = forgotPasswordEmail,
+                        onValueChange = { forgotPasswordEmail = it },
+                        label = { Text(stringResource(R.string.email_address_label)) },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = CyanPrimary,
+                            unfocusedBorderColor = Color(0xFF334155),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val clean = forgotPasswordEmail.trim()
+                        if (clean.isNotBlank() && clean.contains("@")) {
+                            onPasswordResetClick(clean)
+                            showForgotPasswordDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary, contentColor = DarkBackground)
+                ) {
+                    Text(stringResource(R.string.btn_send_reset_link), fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showForgotPasswordDialog = false }) {
+                    Text("Cancel", color = Color(0xFF94A3B8))
+                }
+            },
+            containerColor = DarkSurfaceCard,
+            shape = RoundedCornerShape(16.dp)
+        )
     }
 }
 

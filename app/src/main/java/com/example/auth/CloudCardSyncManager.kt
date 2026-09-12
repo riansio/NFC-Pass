@@ -179,7 +179,12 @@ class CloudCardSyncManager(
                             facilityCode = doc.getString("facilityCode") ?: "",
                             cardNumber = doc.getString("cardNumber") ?: "",
                             colorGradientIndex = (doc.getLong("colorGradientIndex") ?: 0L).toInt(),
-                            notes = doc.getString("notes") ?: "Restored from Google account"
+                            notes = doc.getString("notes") ?: "Restored from Google account",
+                            originalPayload = doc.getString("originalPayload") ?: (doc.getString("ndefPayload") ?: ""),
+                            originalUidHex = doc.getString("originalUidHex") ?: uidHex,
+                            originalFacilityCode = doc.getString("originalFacilityCode") ?: (doc.getString("facilityCode") ?: ""),
+                            originalCardNumber = doc.getString("originalCardNumber") ?: (doc.getString("cardNumber") ?: ""),
+                            originalNdefMimeOrUri = doc.getString("originalNdefMimeOrUri") ?: (doc.getString("ndefMimeOrUri") ?: "")
                         )
                         repository.insert(card)
                         restoredCount++
@@ -222,6 +227,11 @@ class CloudCardSyncManager(
             "cardNumber" to card.cardNumber,
             "colorGradientIndex" to card.colorGradientIndex,
             "notes" to card.notes,
+            "originalPayload" to card.originalPayload,
+            "originalUidHex" to card.originalUidHex,
+            "originalFacilityCode" to card.originalFacilityCode,
+            "originalCardNumber" to card.originalCardNumber,
+            "originalNdefMimeOrUri" to card.originalNdefMimeOrUri,
             "createdAt" to card.createdAt,
             "lastSyncedAt" to System.currentTimeMillis()
         )
@@ -332,7 +342,12 @@ class CloudCardSyncManager(
                         facilityCode = doc.getString("facilityCode") ?: "",
                         cardNumber = doc.getString("cardNumber") ?: "",
                         colorGradientIndex = (doc.getLong("colorGradientIndex") ?: 0L).toInt(),
-                        notes = doc.getString("notes") ?: "Restored from Google account"
+                        notes = doc.getString("notes") ?: "Restored from Google account",
+                        originalPayload = doc.getString("originalPayload") ?: (doc.getString("ndefPayload") ?: ""),
+                        originalUidHex = doc.getString("originalUidHex") ?: uidHex,
+                        originalFacilityCode = doc.getString("originalFacilityCode") ?: (doc.getString("facilityCode") ?: ""),
+                        originalCardNumber = doc.getString("originalCardNumber") ?: (doc.getString("cardNumber") ?: ""),
+                        originalNdefMimeOrUri = doc.getString("originalNdefMimeOrUri") ?: (doc.getString("ndefMimeOrUri") ?: "")
                     )
 
                     repository.insert(card)

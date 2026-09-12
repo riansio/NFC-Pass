@@ -221,6 +221,15 @@ fun NfcPassApp(viewModel: NfcViewModel) {
             onSignInWithGoogle = { activity ->
                 viewModel.signInWithGoogle(activity)
             },
+            onSignInWithEmail = { email, password ->
+                viewModel.signInWithEmail(email, password)
+            },
+            onSignUpWithEmail = { email, password, name ->
+                viewModel.signUpWithEmail(email, password, name)
+            },
+            onPasswordReset = { email ->
+                viewModel.sendPasswordReset(email)
+            },
             onSignOut = { viewModel.signOut() },
             onSyncCards = { viewModel.syncCardsToAccount() },
             onRestoreCards = { viewModel.restoreCardsFromAccount() },
@@ -610,6 +619,15 @@ fun NfcPassApp(viewModel: NfcViewModel) {
                 cardCount = allCards.size,
                 onSignInWithGoogle = { activity ->
                     viewModel.signInWithGoogle(activity)
+                },
+                onSignInWithEmail = { email, password ->
+                    viewModel.signInWithEmail(email, password)
+                },
+                onSignUpWithEmail = { email, password, name ->
+                    viewModel.signUpWithEmail(email, password, name)
+                },
+                onPasswordReset = { email ->
+                    viewModel.sendPasswordReset(email)
                 },
                 onSignOut = {
                     viewModel.setShowLoginScreen(false)

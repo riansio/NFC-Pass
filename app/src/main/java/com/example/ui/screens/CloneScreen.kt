@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,9 +29,11 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Nfc
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -43,6 +46,7 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -104,6 +108,48 @@ fun CloneScreen(
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Banner: Strict Original Cloning Guarantee
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF071F17)),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, EmeraldSuccess.copy(alpha = 0.5f)),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 14.dp)
+                .testTag("strict_original_clone_banner")
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = EmeraldSuccess,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .padding(top = 1.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = stringResource(R.string.clone_original_only_banner_title),
+                        fontWeight = FontWeight.Bold,
+                        color = EmeraldSuccess,
+                        fontSize = 13.sp
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = stringResource(R.string.clone_original_only_banner_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFB8E6D3),
+                        fontSize = 11.5.sp,
+                        lineHeight = 16.sp
+                    )
+                }
+            }
+        }
+
         // Step 1: Select Source Card to Duplicate
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -186,70 +232,10 @@ fun CloneScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 if (sourceCard != null) {
-                    DigitalCardItem(
+                    OriginalPhysicalTagCard(
                         card = sourceCard,
-                        onClick = { showTagPickerSheet = true }
+                        onSwitchCard = { showTagPickerSheet = true }
                     )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Tag details callout (Category & Custom Description)
-                    val context = LocalContext.current
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color(0xFF0B1120), RoundedCornerShape(10.dp))
-                            .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(10.dp))
-                            .padding(12.dp)
-                    ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                val catColor = TagCategories.getCategoryColor(sourceCard.category)
-                                val catIcon = TagCategories.getCategoryIcon(sourceCard.category)
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = catColor.copy(alpha = 0.15f),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, catColor.copy(alpha = 0.4f))
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(catIcon, contentDescription = null, tint = catColor, modifier = Modifier.size(12.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(TagCategories.getLocalizedCategoryName(sourceCard.category, context), color = catColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                                    }
-                                }
-
-                                Text(
-                                    text = stringResource(R.string.clone_ready_to_clone),
-                                    color = EmeraldSuccess,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-
-                            if (sourceCard.description.isNotBlank()) {
-                                Text(
-                                    text = sourceCard.description,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color(0xFFCBD5E1)
-                                )
-                            }
-
-                            Text(
-                                text = "NDEF Payload: NFC-PASS:UID=${sourceCard.uidHex}|NAME=${sourceCard.name}|CAT=${sourceCard.category}",
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 10.sp,
-                                color = Color(0xFF64748B),
-                                maxLines = 1
-                            )
-                        }
-                    }
                 } else {
                     Box(
                         modifier = Modifier
@@ -727,21 +713,12 @@ fun SavedTagPickerSheet(
                                     }
 
                                     Spacer(modifier = Modifier.height(4.dp))
-                                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                        Text(
-                                            text = "UID: ${card.uidHex}",
-                                            fontFamily = FontFamily.Monospace,
-                                            fontSize = 11.sp,
-                                            color = Color(0xFF64748B)
-                                        )
-                                        if (card.facilityName.isNotBlank()) {
-                                            Text(
-                                                text = card.facilityName,
-                                                fontSize = 11.sp,
-                                                color = Color(0xFF64748B)
-                                            )
-                                        }
-                                    }
+                                    Text(
+                                        text = "Original UID: ${card.effectiveOriginalUidHex}",
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = 11.sp,
+                                        color = Color(0xFF64748B)
+                                    )
                                 }
 
                                 if (isSelected) {
@@ -763,6 +740,195 @@ fun SavedTagPickerSheet(
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun OriginalPhysicalTagCard(
+    card: NfcCard,
+    onSwitchCard: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onSwitchCard() }
+            .testTag("original_physical_tag_card"),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF091220)),
+        border = BorderStroke(1.dp, CyanPrimary.copy(alpha = 0.4f))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // Header: Hardware Tag Status & Unmodified Badge
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = CircleShape,
+                        color = CyanPrimary.copy(alpha = 0.15f),
+                        modifier = Modifier.size(28.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Default.Sensors,
+                                contentDescription = null,
+                                tint = CyanPrimary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            text = stringResource(R.string.clone_source_original_title),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.8.sp
+                        )
+                        Text(
+                            text = "Hardware Tag ID: ${card.effectiveOriginalUidHex}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF94A3B8),
+                            fontSize = 11.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = EmeraldSuccess.copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, EmeraldSuccess.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        text = "RAW HARDWARE ONLY",
+                        color = EmeraldSuccess,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+            }
+
+            HorizontalDivider(color = Color(0xFF1E293B), thickness = 1.dp)
+
+            // Primary Original Hardware UID
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF040A14), RoundedCornerShape(10.dp))
+                    .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(10.dp))
+                    .padding(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.clone_raw_uid_label),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CyanPrimary,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Hardware Block 0",
+                        fontSize = 10.sp,
+                        color = Color(0xFF64748B)
+                    )
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = card.effectiveOriginalUidHex,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+
+            // Original Payload if present (pure scanned raw payload only)
+            if (card.effectiveOriginalPayload.isNotBlank() && !card.effectiveOriginalPayload.startsWith("NFC-PASS:", ignoreCase = true)) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF040A14), RoundedCornerShape(10.dp))
+                        .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(10.dp))
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.clone_raw_payload_label),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CyanPrimary,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = card.effectiveOriginalPayload,
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 12.sp,
+                        color = Color(0xFFE2E8F0),
+                        lineHeight = 16.sp
+                    )
+                }
+            }
+
+            // Radio Technologies & Protocols
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Tech: ${card.techList.joinToString(" • ") { it.substringAfterLast(".") }}",
+                    fontSize = 11.sp,
+                    color = Color(0xFF64748B)
+                )
+                Text(
+                    text = "ATQA: ${card.atqaHex} | SAK: ${card.sakHex}",
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 10.sp,
+                    color = Color(0xFF64748B)
+                )
+            }
+
+            // Explicit Excluded Details Notice
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = Color(0xFF161C26),
+                border = BorderStroke(1.dp, Color(0xFF27354A)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = null,
+                        tint = EmeraldSuccess,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Pure Hardware Clone: Columns for Category, Facility, Facility Code, and Card number are removed. Card name is not duplicated to the cloned card.",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontSize = 10.5.sp,
+                        color = Color(0xFF94A3B8),
+                        lineHeight = 14.sp
+                    )
                 }
             }
         }

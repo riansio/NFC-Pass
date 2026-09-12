@@ -116,4 +116,63 @@ class ExampleRobolectricTest {
             controller.hardwareState.value == NfcHardwareState.UNSUPPORTED
         )
     }
+
+    @Test
+    fun `test cloning strictly preserves original card contents and ignores user modifications`() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val controller = NfcController(context)
+
+        // Card originally scanned from a physical tag with raw UID and payload
+        val cardWithEdits = com.example.data.NfcCard(
+            id = 42L,
+            uidHex = "04:DE:AD:BE:EF:01:02",
+            name = "USER MODIFIED OFFICE NAME",
+            description = "USER MODIFIED PRIVATE NOTES AND DESCRIPTION",
+            category = "VIP Office",
+            facilityName = "USER MODIFIED HEADQUARTERS",
+            cardType = com.example.data.CardType.ACCESS_BADGE,
+            facilityCode = "888",
+            cardNumber = "99999",
+            originalUidHex = "04:11:22:33:44:55:66",
+            originalPayload = "ORIGINAL_PHYSICAL_RAW_NDEF_PAYLOAD",
+            originalFacilityCode = "101",
+            originalCardNumber = "54321",
+            originalNdefMimeOrUri = "ORIGINAL_PHYSICAL_RAW_NDEF_PAYLOAD",
+            notes = "TOP SECRET PERSONAL USER NOTES"
+        )
+
+        // Verify effective originals return original hardware scan values, not user modifications
+        assertEquals("04:11:22:33:44:55:66", cardWithEdits.effectiveOriginalUidHex)
+        assertEquals("ORIGINAL_PHYSICAL_RAW_NDEF_PAYLOAD", cardWithEdits.effectiveOriginalPayload)
+        assertEquals("101", cardWithEdits.effectiveOriginalFacilityCode)
+        assertEquals("54321", cardWithEdits.effectiveOriginalCardNumber)
+
+        // Verify clone data summary contains original payload and excludes user edits
+        val cloneSummary = controller.getOriginalCloneDataSummary(cardWithEdits)
+        assertEquals("ORIGINAL_PHYSICAL_RAW_NDEF_PAYLOAD", cloneSummary)
+        assertTrue("User edited name must not be in clone data", !cloneSummary.contains("USER MODIFIED OFFICE NAME"))
+        assertTrue("User edited notes must not be in clone data", !cloneSummary.contains("TOP SECRET PERSONAL USER NOTES"))
+        assertTrue("User edited description must not be in clone data", !cloneSummary.contains("USER MODIFIED PRIVATE NOTES"))
+
+        // Test access card without raw NDEF payload: should clone original access credentials only
+        val rawAccessCard = com.example.data.NfcCard(
+            id = 43L,
+            uidHex = "04:99:88:77:66:55:44",
+            name = "User Custom Gym Tag",
+            description = "User locker 402",
+            category = "Gym",
+            originalUidHex = "04:AA:BB:CC:DD:EE:FF",
+            originalFacilityCode = "202",
+            originalCardNumber = "12345",
+            originalPayload = ""
+        )
+
+        val accessCloneSummary = controller.getOriginalCloneDataSummary(rawAccessCard)
+        assertEquals("UID=04:AA:BB:CC:DD:EE:FF", accessCloneSummary)
+        assertTrue("Clone summary must NOT contain facility code", !accessCloneSummary.contains("202"))
+        assertTrue("Clone summary must NOT contain card number", !accessCloneSummary.contains("12345"))
+        assertTrue("Clone summary must NOT contain category", !accessCloneSummary.contains("Gym"))
+        assertTrue("Clone summary must NOT contain card name", !accessCloneSummary.contains("User Custom Gym Tag"))
+        assertTrue("Clone summary must NOT contain user description", !accessCloneSummary.contains("User locker 402"))
+    }
 }

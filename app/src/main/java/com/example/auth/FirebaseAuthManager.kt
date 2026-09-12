@@ -211,6 +211,99 @@ class FirebaseAuthManager(private val context: Context) {
     }
 
     /**
+     * Authenticates an existing user using Firebase Authentication with Email and Password.
+     */
+    suspend fun signInWithEmailAndPassword(email: String, password: String): Result<AuthUser> {
+        val cleanEmail = email.trim()
+        if (cleanEmail.isBlank() || password.isBlank()) {
+            return Result.failure(IllegalArgumentException("Email and password cannot be empty."))
+        }
+        val auth = firebaseAuth
+            ?: return Result.failure(IllegalStateException("Firebase Auth is not initialized."))
+
+        return try {
+            val authResult = auth.signInWithEmailAndPassword(cleanEmail, password).await()
+            val firebaseUser = authResult.user
+                ?: return Result.failure(IllegalStateException("Sign in succeeded but user is null."))
+            val authUser = firebaseUser.toAuthUser()
+            _currentUser.value = authUser
+            persistUser(authUser)
+            Log.i(TAG, "Signed in via Firebase Email/Password: ${authUser.email}")
+            Result.success(authUser)
+        } catch (e: Exception) {
+            Log.e(TAG, "Email sign-in error: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Registers a new user account with Firebase Authentication using Email and Password.
+     */
+    suspend fun createUserWithEmailAndPassword(
+        email: String,
+        password: String,
+        displayName: String
+    ): Result<AuthUser> {
+        val cleanEmail = email.trim()
+        val cleanName = displayName.trim()
+        if (cleanEmail.isBlank() || password.isBlank()) {
+            return Result.failure(IllegalArgumentException("Email and password cannot be empty."))
+        }
+        if (password.length < 6) {
+            return Result.failure(IllegalArgumentException("Password must be at least 6 characters."))
+        }
+        val auth = firebaseAuth
+            ?: return Result.failure(IllegalStateException("Firebase Auth is not initialized."))
+
+        return try {
+            val authResult = auth.createUserWithEmailAndPassword(cleanEmail, password).await()
+            val firebaseUser = authResult.user
+                ?: return Result.failure(IllegalStateException("Account creation succeeded but user is null."))
+
+            if (cleanName.isNotBlank()) {
+                try {
+                    val profileUpdates = com.google.firebase.auth.UserProfileChangeRequest.Builder()
+                        .setDisplayName(cleanName)
+                        .build()
+                    firebaseUser.updateProfile(profileUpdates).await()
+                    firebaseUser.reload().await()
+                } catch (pe: Exception) {
+                    Log.w(TAG, "Failed setting profile display name: ${pe.message}")
+                }
+            }
+            val authUser = firebaseUser.toAuthUser()
+            _currentUser.value = authUser
+            persistUser(authUser)
+            Log.i(TAG, "Created new Firebase user: ${authUser.email}")
+            Result.success(authUser)
+        } catch (e: Exception) {
+            Log.e(TAG, "Email sign-up error: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Sends a password reset email using Firebase Authentication.
+     */
+    suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
+        val cleanEmail = email.trim()
+        if (cleanEmail.isBlank()) {
+            return Result.failure(IllegalArgumentException("Please enter a valid email address."))
+        }
+        val auth = firebaseAuth
+            ?: return Result.failure(IllegalStateException("Firebase Auth is not initialized."))
+
+        return try {
+            auth.sendPasswordResetEmail(cleanEmail).await()
+            Log.i(TAG, "Password reset email sent to $cleanEmail")
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Password reset error: ${e.message}", e)
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Signs out from Firebase Authentication and clears Credential Manager state.
      */
     suspend fun signOut(): Result<Unit> {

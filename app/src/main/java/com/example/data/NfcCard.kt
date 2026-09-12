@@ -27,5 +27,41 @@ data class NfcCard(
     val createdAt: Long = System.currentTimeMillis(),
     val lastEmulatedAt: Long? = null,
     val timesEmulated: Int = 0,
-    val notes: String = ""
-)
+    val notes: String = "",
+    // Original unmodified contents preserved from the original tag
+    val originalPayload: String = "",
+    val originalUidHex: String = "",
+    val originalFacilityCode: String = "",
+    val originalCardNumber: String = "",
+    val originalNdefMimeOrUri: String = ""
+) {
+    /**
+     * Returns the strictly original, unmodified payload from the physical card.
+     */
+    val effectiveOriginalPayload: String
+        get() = originalPayload.ifBlank { ndefPayload }
+
+    /**
+     * Returns the strictly original UID from the physical card.
+     */
+    val effectiveOriginalUidHex: String
+        get() = originalUidHex.ifBlank { uidHex }
+
+    /**
+     * Returns the strictly original facility code from the physical card.
+     */
+    val effectiveOriginalFacilityCode: String
+        get() = originalFacilityCode.ifBlank { facilityCode }
+
+    /**
+     * Returns the strictly original card number from the physical card.
+     */
+    val effectiveOriginalCardNumber: String
+        get() = originalCardNumber.ifBlank { cardNumber }
+
+    /**
+     * Returns the strictly original NDEF MIME or URI from the physical card.
+     */
+    val effectiveOriginalMimeOrUri: String
+        get() = originalNdefMimeOrUri.ifBlank { ndefMimeOrUri }
+}

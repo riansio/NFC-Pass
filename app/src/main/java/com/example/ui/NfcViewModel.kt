@@ -133,6 +133,61 @@ class NfcViewModel(
         }
     }
 
+    fun signInWithEmail(email: String, password: String, onComplete: ((Boolean) -> Unit)? = null) {
+        viewModelScope.launch {
+            _authUiState.value = AuthUiState.Loading
+            val result = authManager.signInWithEmailAndPassword(email, password)
+            result.fold(
+                onSuccess = { user ->
+                    _authUiState.value = AuthUiState.Success(user)
+                    _bannerMessage.value = "Welcome back, ${user.displayName ?: user.email ?: "User"}! Storing tags to cloud."
+                    syncCardsToAccount()
+                    onComplete?.invoke(true)
+                },
+                onFailure = { error ->
+                    _authUiState.value = AuthUiState.Error(error.localizedMessage ?: "Email sign-in failed")
+                    onComplete?.invoke(false)
+                }
+            )
+        }
+    }
+
+    fun signUpWithEmail(email: String, password: String, displayName: String, onComplete: ((Boolean) -> Unit)? = null) {
+        viewModelScope.launch {
+            _authUiState.value = AuthUiState.Loading
+            val result = authManager.createUserWithEmailAndPassword(email, password, displayName)
+            result.fold(
+                onSuccess = { user ->
+                    _authUiState.value = AuthUiState.Success(user)
+                    _bannerMessage.value = "Account created! Syncing stored NFC cards to cloud."
+                    syncCardsToAccount()
+                    onComplete?.invoke(true)
+                },
+                onFailure = { error ->
+                    _authUiState.value = AuthUiState.Error(error.localizedMessage ?: "Registration failed")
+                    onComplete?.invoke(false)
+                }
+            )
+        }
+    }
+
+    fun sendPasswordReset(email: String, onComplete: ((Boolean, String) -> Unit)? = null) {
+        viewModelScope.launch {
+            val result = authManager.sendPasswordResetEmail(email)
+            result.fold(
+                onSuccess = {
+                    _bannerMessage.value = "Password reset instructions sent to $email"
+                    onComplete?.invoke(true, "Password reset email sent. Please check your inbox.")
+                },
+                onFailure = { error ->
+                    val msg = error.localizedMessage ?: "Failed to send reset email"
+                    _bannerMessage.value = msg
+                    onComplete?.invoke(false, msg)
+                }
+            )
+        }
+    }
+
     fun signOut() {
         viewModelScope.launch {
             authManager.signOut()
@@ -359,7 +414,12 @@ class NfcViewModel(
                 cardNumber = cardNumber,
                 colorGradientIndex = colorIndex,
                 isActiveVirtualCard = armImmediately,
-                notes = notes
+                notes = notes,
+                originalPayload = tag.ndefPayload,
+                originalUidHex = tag.uidHex,
+                originalFacilityCode = facilityCode,
+                originalCardNumber = cardNumber,
+                originalNdefMimeOrUri = tag.ndefPayload
             )
             val newId = repository.insert(card)
             val savedCard = card.copy(id = newId)
@@ -412,7 +472,12 @@ class NfcViewModel(
                 cardNumber = cardNumber,
                 colorGradientIndex = colorIndex,
                 isActiveVirtualCard = armImmediately,
-                notes = notes
+                notes = notes,
+                originalPayload = ndefPayload,
+                originalUidHex = formattedUid.ifBlank { "04:A1:B2:C3:D4:E5:80" },
+                originalFacilityCode = facilityCode,
+                originalCardNumber = cardNumber,
+                originalNdefMimeOrUri = ndefPayload
             )
             val newId = repository.insert(card)
             val savedCard = card.copy(id = newId)
